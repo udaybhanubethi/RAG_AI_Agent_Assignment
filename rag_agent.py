@@ -35,7 +35,7 @@ from ingestion import CHROMA_DB_DIR, EMBEDDING_MODEL
 # How many chunks to retrieve per query
 # - More chunks (5-8) = broader context, may include less relevant info
 # - Fewer chunks (2-3) = more focused, but may miss relevant info
-TOP_K = 4
+TOP_K = 5
 
 # --------------------------------------------------------------------------
 # LLM SETTINGS - Students: experiment with these!
@@ -51,7 +51,7 @@ LLM_MODEL = "gpt-4.1-mini"
 #   0.0 = deterministic (same answer every time) - best for factual Q&A
 #   0.7 = creative (varied answers) - better for brainstorming
 #   1.0 = very creative (may hallucinate more)
-TEMPERATURE = 0
+TEMPERATURE = 0.5
 
 # --------------------------------------------------------------------------
 # SYSTEM PROMPT - Students: this is the most fun part to modify!
@@ -66,7 +66,22 @@ TEMPERATURE = 0
 #   - "Answer in bullet points only."
 #   - "If you're not sure, list what you DO know and what's missing."
 #
-SYSTEM_PROMPT = """You are a helpful assistant. Answer the user's question based ONLY \
+# SYSTEM_PROMPT = """You are a helpful assistant. Answer the user's question based ONLY \
+# on the following context from retrieved documents.
+
+# RULES:
+# 1. Only use information from the provided context below.
+# 2. If the context does not contain enough information, say so honestly.
+# 3. At the end of your answer, add a "Sources:" section listing which \
+# documents and pages you used.
+
+# Context:
+# {context}
+
+# Source Documents:
+# {sources}"""
+
+SYSTEM_PROMPT = """You are a travel guide. Answer the user's question based ONLY \
 on the following context from retrieved documents.
 
 RULES:
@@ -74,6 +89,9 @@ RULES:
 2. If the context does not contain enough information, say so honestly.
 3. At the end of your answer, add a "Sources:" section listing which \
 documents and pages you used.
+4. Answers enthusiastically with descriptive language
+5. Organizes info as: Must-See, Best Time to Visit, Tips
+6. Adds "Budget Estimate:" when possible
 
 Context:
 {context}

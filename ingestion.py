@@ -40,12 +40,12 @@ CHROMA_DB_DIR = "chroma_db"
 # CHUNK_SIZE: How many characters per chunk.
 #   - Smaller (300-500)  = more precise retrieval, but may lose context
 #   - Larger  (1000-2000) = more context per chunk, but less precise matching
-CHUNK_SIZE = 1000
+CHUNK_SIZE = 700
 
 # CHUNK_OVERLAP: How many characters overlap between consecutive chunks.
 #   - More overlap (200-500) = better continuity, chunks share more context
 #   - Less overlap (0-100)   = less redundancy, but may miss split sentences
-CHUNK_OVERLAP = 200
+CHUNK_OVERLAP = 100
 
 # --------------------------------------------------------------------------
 # EMBEDDING MODEL - Students: try swapping this!
@@ -56,7 +56,7 @@ CHUNK_OVERLAP = 200
 #   "all-MiniLM-L12-v2"          - Slightly better quality, still fast
 #   "all-mpnet-base-v2"          - Best quality from sentence-transformers (~420MB)
 #   "paraphrase-MiniLM-L6-v2"    - Good for paraphrase detection
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "all-MiniLM-L12-v2"
 
 
 # ==========================================================================
@@ -120,12 +120,12 @@ def split_documents(documents: list) -> list:
     # STRATEGY 1: RecursiveCharacterTextSplitter (DEFAULT)
     # Splits by paragraphs -> sentences -> words, keeping structure intact.
     # This is the most commonly used splitter and a great starting point.
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        length_function=len,
-        separators=["\n\n", "\n", ". ", " ", ""],  # Split priority order
-    )
+    # text_splitter = RecursiveCharacterTextSplitter(
+    #     chunk_size=CHUNK_SIZE,
+    #     chunk_overlap=CHUNK_OVERLAP,
+    #     length_function=len,
+    #     separators=["\n\n", "\n", ". ", " ", ""],  # Split priority order
+    # )
 
     # STRATEGY 2: CharacterTextSplitter (simpler, less smart)
     # Uncomment below and comment out Strategy 1 to try it:
@@ -141,11 +141,22 @@ def split_documents(documents: list) -> list:
     # Better for LLMs since they process tokens, not characters.
     # Uncomment below to try it:
     #
-    # from langchain_text_splitters import TokenTextSplitter
-    # text_splitter = TokenTextSplitter(
-    #     chunk_size=200,       # 200 tokens per chunk
-    #     chunk_overlap=50,     # 50 token overlap
-    # )
+    from langchain_text_splitters import TokenTextSplitter
+    text_splitter = TokenTextSplitter(
+        chunk_size=CHUNK_SIZE,       # 200 tokens per chunk
+        chunk_overlap=CHUNK_OVERLAP,     # 50 token overlap
+    )
+
+    # STRATEGY 4: Paragraph (splits by tokens instead of characters)
+    # keeps related ideas together by chunking text at paragraph natural sentence boundaries
+    # Uncomment below to try it:
+    #
+    # text_splitter = RecursiveCharacterTextSplitter(
+    #     chunk_size=CHUNK_SIZE,
+    #     chunk_overlap=CHUNK_OVERLAP,
+    #     length_function=len,
+    #     )
+    # chunks = text_splitter.split_text(text)
 
     # --------------------------------------------------------------------------
 
