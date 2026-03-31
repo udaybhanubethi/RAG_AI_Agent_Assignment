@@ -35,7 +35,7 @@ from ingestion import CHROMA_DB_DIR, EMBEDDING_MODEL
 # How many chunks to retrieve per query
 # - More chunks (5-8) = broader context, may include less relevant info
 # - Fewer chunks (2-3) = more focused, but may miss relevant info
-TOP_K = 5
+TOP_K = 3
 
 # --------------------------------------------------------------------------
 # LLM SETTINGS - Students: experiment with these!
@@ -140,7 +140,7 @@ def retrieve(state: RAGState) -> dict:
 
     # METHOD 1: Basic similarity search (DEFAULT)
     # Returns the TOP_K chunks most similar to the question
-    results = vector_store.similarity_search(question, k=TOP_K)
+    #results = vector_store.similarity_search(question, k=TOP_K)
 
     # METHOD 2: Similarity search with relevance scores
     # Returns chunks along with their similarity scores (0 to 1)
@@ -161,6 +161,52 @@ def retrieve(state: RAGState) -> dict:
     # results = vector_store.max_marginal_relevance_search(
     #     question, k=TOP_K, fetch_k=TOP_K * 3
     # )
+
+        # METHOD 4: Context Expansion
+    # Extracts neighbouring chunks to give more data about the context which
+    # minimizes the halucinamtion for LLM
+    #
+    # results = vector_store.max_marginal_relevance_search(
+    #     question, k=TOP_K, fetch_k=TOP_K * 3
+    # )
+    initial_results = vector_store.similarity_search(question, k=TOP_K)
+
+    from langchain_core.documents import Document
+
+    def fetch_chunk_by_id(vector_store, chunk_id):
+        res = vector_store.get(where={"chunk_id": chunk_id})
+
+        if res["documents"]:
+            return Document(
+                page_content=res["documents"][0],
+                metadata=res["metadatas"][0]
+            )
+        return None
+
+    results = []
+
+    for result in initial_results:
+        curr_chunk_id = result.metadata["chunk_id"]
+        prev_doc = fetch_chunk_by_id(vector_store, curr_chunk_id - 1)
+        curr_doc = result  # already a Document
+        next_doc = fetch_chunk_by_id(vector_store, curr_chunk_id + 1)
+
+    # Keep order: prev → current → next
+        combined = []
+
+        if prev_doc:
+            combined.append(prev_doc)
+        combined.append(curr_doc)
+        if next_doc:
+            combined.append(next_doc)
+        results.extend(combined)  # flatten list
+
+    unique_chunks = {}
+    for doc in results:
+        key = doc.metadata["chunk_id"]
+        unique_chunks[key] = doc
+
+    results = list(unique_chunks.values())
 
     # --------------------------------------------------------------------------
 

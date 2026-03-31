@@ -22,6 +22,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from langchain_core.documents import Document
 
 
 # ==========================================================================
@@ -160,9 +161,36 @@ def split_documents(documents: list) -> list:
 
     # --------------------------------------------------------------------------
 
-    chunks = text_splitter.split_documents(documents)
-    print(f"  Split into {len(chunks)} chunks (size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP}).")
-    return chunks
+    # chunks = text_splitter.split_documents(documents)
+    # print(f"  Split into {len(chunks)} chunks (size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP}).")
+    # for i,chunk in enumerate(chunks):
+    #     chunk.metadata["chunk_id"]=i
+    # return chunks
+
+    processed_chunks = []
+    global_chunk_id = 0
+
+    for doc_id,doc in enumerate(documents):
+        file_name = doc.metadata.get("source", "unknown")
+        page_num = doc.metadata.get("page", 0)
+
+        split_chunks = text_splitter.split_text(doc.page_content)
+
+        for i, chunk_text in enumerate(split_chunks):
+            chunk = Document(
+            page_content=chunk_text,
+            metadata={
+                "chunk_id": global_chunk_id,
+                "doc_id": doc_id,
+                "source": file_name,
+                "page": page_num
+            }
+        )
+        processed_chunks.append(chunk)
+        global_chunk_id +=1
+
+    print(f"  Split into {len(processed_chunks)} chunks.")
+    return processed_chunks
 
 
 # ==========================================================================
@@ -183,7 +211,7 @@ def create_vector_store(chunks: list) -> Chroma:
     # Create the ChromaDB vector store on disk
     # This stores both the vectors AND the original text + metadata
     vector_store = Chroma.from_documents(
-        documents=chunks,
+        documents = chunks,
         embedding=embeddings,
         persist_directory=CHROMA_DB_DIR,
     )
